@@ -50,18 +50,42 @@ async function respondVacancy(page) {
 
 // переход на следующую страницу
 async function nextPage(page) {
+  await killOverlays(page)
+
   const pages = await page.$$('[data-qa="pager-page"]')
+
   const lastPage = pages[pages.length - 1]
 
-  const box = await lastPage.boundingBox()
+  await lastPage.scrollIntoViewIfNeeded()
 
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {
-    steps: 30,
-  })
-
-  await page.waitForTimeout(500 + Math.random() * 800)
+  await page.waitForTimeout(400)
 
   await lastPage.click()
+}
+
+async function closeCookies(page) {
+  try {
+    const cookieBtn = await page.$('[data-qa="cookies-policy-informer"] button')
+
+    if (cookieBtn) {
+      await cookieBtn.click()
+      await page.waitForTimeout(500)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function killOverlays(page) {
+  await page.evaluate(() => {
+    const blockers = document.querySelectorAll(`
+      [data-qa="cookies-policy-informer"],
+      #bottom-cookies-policy-informer,
+      .wrapper--UZEraJ9YBXy3riZk
+    `)
+
+    blockers.forEach(el => el.remove())
+  })
 }
 
 module.exports = {
@@ -69,4 +93,6 @@ module.exports = {
   addToFavorite,
   respondVacancy,
   nextPage,
+  closeCookies,
+  killOverlays,
 }

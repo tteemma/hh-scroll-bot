@@ -16,6 +16,8 @@ function rand(min, max) {
     timeout: 0,
   })
 
+  await actions.closeCookies(page)
+
   await page.waitForSelector('[data-qa="serp-item__title"]')
 
   while (true) {
@@ -53,9 +55,9 @@ function rand(min, max) {
     // --- случайный сценарий действий ---
     const behavior = rand(0, 3)
 
-    if (behavior === 0) {
-      await actions.respondVacancy(vacancyPage)
-    }
+    // if (behavior === 0) {
+    //   await actions.respondVacancy(vacancyPage)
+    // }
 
     if (behavior === 1) {
       await vacancyPage.mouse.wheel(0, 600)
@@ -63,7 +65,7 @@ function rand(min, max) {
     }
 
     if (behavior === 2) {
-      await actions.respondVacancy(vacancyPage)
+      // await actions.respondVacancy(vacancyPage)
       await vacancyPage.mouse.wheel(0, 400)
     }
 
@@ -75,6 +77,7 @@ function rand(min, max) {
 
     // иногда перейти на следующую страницу
     if (Math.random() > 0.7) {
+      await actions.killOverlays(page)
       await actions.nextPage(page)
       await page.waitForSelector('[data-qa="serp-item__title"]')
     }
