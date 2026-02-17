@@ -1,3 +1,5 @@
+const start = performance.now()
+
 const { createBrowser } = require('./browser')
 const actions = require('./actions')
 
@@ -5,7 +7,6 @@ function rand(min, max) {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
-// ===== CLI CONFIG =====
 const args = process.argv.slice(2)
 
 const config = {
@@ -15,7 +16,6 @@ const config = {
 
 console.log('CONFIG:', config)
 
-// ===== MEMORY =====
 const visitedVacancies = new Set()
 
 function pickState() {
@@ -117,3 +117,15 @@ function pickState() {
     }
   }
 })()
+
+function printWorkTime() {
+  const end = performance.now()
+  const seconds = ((end - start) / 1000).toFixed(2)
+  console.log(`Program worked: ${seconds}s`)
+}
+
+process.on('SIGxINT', () => {
+  printWorkTime()
+})
+
+process.on('exit', printWorkTime)
