@@ -6,14 +6,25 @@ async function humanScroll(page) {
   const steps = rand(20, 60)
 
   for (let i = 0; i < steps; i++) {
-    const direction = Math.random() < 0.7 ? 1 : -1
-    const distance = rand(60, 140) * direction
+    try {
+      const direction = Math.random() < 0.9 ? 1 : -1
+      const distance = rand(60, 140) * direction
 
-    await page.evaluate(d => {
-      window.scrollBy(0, d)
-    }, distance)
+      await page.evaluate(d => {
+        window.scrollBy(0, d)
+      }, distance)
 
-    await page.waitForTimeout(rand(80, 200))
+      await page.waitForTimeout(rand(80, 200))
+    } catch (e) {
+      if (
+        e.message.includes('Execution context was destroyed') ||
+        e.message.includes('Target closed')
+      ) {
+        return
+      }
+
+      throw e
+    }
   }
 }
 
