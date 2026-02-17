@@ -1,4 +1,4 @@
 node src/index.js --respond       // отклики включены
 node src/index.js --no-open       // вакансии не открывать
 node src/index.js --respond --no-open
-node src/index.js                 // обычный режим
+node src/index.js                 // обычный режим (включены и отклики на вакансии и их рандомное открытие)
