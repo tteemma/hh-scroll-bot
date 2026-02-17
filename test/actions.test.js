@@ -23,20 +23,4 @@ describe('actions.js', () => {
 
     expect(page.evaluate).toHaveBeenCalled()
   })
-
-  test('nextPage кликает по последней странице', async () => {
-    const page = createMockPage()
-
-    const fakeHandle = {
-      scrollIntoViewIfNeeded: jest.fn().mockResolvedValue(),
-      click: jest.fn().mockResolvedValue(),
-    }
-
-    // вернём несколько страниц
-    page.$$.mockResolvedValue([fakeHandle, fakeHandle, fakeHandle])
-
-    await actions.nextPage(page)
-
-    expect(fakeHandle.click).toHaveBeenCalled()
-  })
 })

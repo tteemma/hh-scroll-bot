@@ -52,23 +52,21 @@ async function respondVacancy(page) {
 async function nextPage(page) {
   await killOverlays(page)
 
-  const pages = await page.$$('[data-qa="pager-page"]')
-
-  const lastPage = pages[pages.length - 1]
+  const pages = page.locator('[data-qa="pager-page"]')
+  const lastPage = pages.last()
 
   await lastPage.scrollIntoViewIfNeeded()
-
   await page.waitForTimeout(400)
 
-  await lastPage.click()
+  await lastPage.click({ force: true })
 }
 
 async function closeCookies(page) {
   try {
-    const cookieBtn = await page.$('[data-qa="cookies-policy-informer"] button')
+    const cookieBtn = page.locator('[data-qa="cookies-policy-informer"] button')
 
-    if (cookieBtn) {
-      await cookieBtn.click()
+    if (await cookieBtn.count()) {
+      await cookieBtn.click({ force: true })
       await page.waitForTimeout(500)
     }
   } catch (e) {
@@ -81,7 +79,9 @@ async function killOverlays(page) {
     const blockers = document.querySelectorAll(`
       [data-qa="cookies-policy-informer"],
       #bottom-cookies-policy-informer,
-      .wrapper--UZEraJ9YBXy3riZk
+      .wrapper--UZEraJ9YBXy3riZk,
+      [class*="float-chatik-activator"],
+      [class*="floating-button"]
     `)
 
     blockers.forEach(el => el.remove())
