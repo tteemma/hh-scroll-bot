@@ -5,6 +5,29 @@ function rand(min, max) {
   return Math.floor(Math.random() * (max - min) + min)
 }
 
+// ===== CLI CONFIG =====
+const args = process.argv.slice(2)
+
+const config = {
+  respond: args.includes('--respond'),
+  openVacancy: !args.includes('--no-open'),
+}
+
+console.log('CONFIG:', config)
+
+// ===== MEMORY =====
+const visitedVacancies = new Set()
+
+function pickState() {
+  const r = Math.random()
+
+  if (r < 0.25) return 'scrollOnly'
+  if (r < 0.45) return 'openVacancy'
+  if (r < 0.65) return 'favorite'
+  if (r < 0.85) return 'respond'
+  return 'paginate'
+}
+
 ;(async () => {
   const { page } = await createBrowser('auth.json')
 
@@ -21,67 +44,76 @@ function rand(min, max) {
   await page.waitForSelector('[data-qa="serp-item__title"]')
 
   while (true) {
-    // мягкий случайный скролл
+    const state = pickState()
+
     await actions.humanScroll(page)
 
     const vacancies = await page.$$('[data-qa="serp-item__title"]')
 
-    // случайная вакансия на странице
-    const randomIndex = rand(0, vacancies.length)
-    const vacancy = vacancies[randomIndex]
+    const fresh = []
 
-    // плавно подвести мышь
-    const box = await vacancy.boundingBox()
+    for (const v of vacancies) {
+      const text = await v.innerText()
+      if (!visitedVacancies.has(text)) {
+        fresh.push({ el: v, id: text })
+      }
+    }
 
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {
-      steps: rand(20, 40),
-    })
+    if (!fresh.length) {
+      visitedVacancies.clear()
+      continue
+    }
 
-    await page.waitForTimeout(rand(600, 1400))
+    const random = fresh[rand(0, fresh.length)]
+    const vacancy = random.el
 
-    // иногда добавить в избранное прямо в списке
-    if (Math.random() > 0.5) {
+    visitedVacancies.add(random.id)
+
+    if (state === 'scrollOnly') {
+      await page.waitForTimeout(rand(2000, 5000))
+      continue
+    }
+
+    if (state === 'favorite') {
       await actions.addToFavorite(page)
+      await page.waitForTimeout(rand(2000, 4000))
+      continue
     }
 
-    // открыть вакансию
-    const [vacancyPage] = await Promise.all([
-      page.context().waitForEvent('page'),
-      vacancy.click(),
-    ])
-
-    await vacancyPage.waitForLoadState('domcontentloaded')
-
-    // --- случайный сценарий действий ---
-    const behavior = rand(0, 3)
-
-    // if (behavior === 0) {
-    //   await actions.respondVacancy(vacancyPage)
-    // }
-
-    if (behavior === 1) {
-      await vacancyPage.mouse.wheel(0, 600)
-      await vacancyPage.waitForTimeout(rand(1500, 3000))
+    if (state === 'respond' && config.respond && !config.openVacancy) {
+      await actions.respondVacancy(page)
+      await page.waitForTimeout(rand(2000, 4000))
+      continue
     }
 
-    if (behavior === 2) {
-      // await actions.respondVacancy(vacancyPage)
-      await vacancyPage.mouse.wheel(0, 400)
+    if (state === 'openVacancy' && config.openVacancy) {
+      const [vacancyPage] = await Promise.all([
+        page.context().waitForEvent('page'),
+        vacancy.click(),
+      ])
+
+      await vacancyPage.waitForLoadState('domcontentloaded')
+
+      if (Math.random() > 0.5) {
+        await actions.randomWheel(vacancyPage)
+      }
+
+      if (config.respond && Math.random() > 0.6) {
+        await actions.respondVacancy(vacancyPage)
+      }
+
+      await vacancyPage.waitForTimeout(rand(2000, 6000))
+
+      await vacancyPage.close()
+      await page.bringToFront()
+
+      continue
     }
 
-    await vacancyPage.waitForTimeout(rand(2000, 5000))
-
-    await vacancyPage.close()
-
-    await page.bringToFront()
-
-    // иногда перейти на следующую страницу
-    if (Math.random() > 0.7) {
-      await actions.killOverlays(page)
-      await actions.nextPage(page)
+    if (state === 'paginate') {
+      await actions.smartNextPage(page)
       await page.waitForSelector('[data-qa="serp-item__title"]')
+      continue
     }
-
-    await page.waitForTimeout(rand(2000, 6000))
   }
 })()

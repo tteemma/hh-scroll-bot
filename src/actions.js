@@ -1,20 +1,38 @@
-// плавный скролл (очень мягкий)
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min) + min)
+}
+
 async function humanScroll(page) {
-  const steps = 50
+  const steps = rand(20, 60)
 
   for (let i = 0; i < steps; i++) {
-    await page.evaluate(() => {
-      window.scrollBy(0, 80)
-    })
+    const direction = Math.random() < 0.7 ? 1 : -1
+    const distance = rand(60, 140) * direction
 
-    await page.waitForTimeout(120 + Math.random() * 160)
+    await page.evaluate(d => {
+      window.scrollBy(0, d)
+    }, distance)
+
+    await page.waitForTimeout(rand(80, 200))
   }
 }
 
-// плавное движение мыши к элементу
+async function randomWheel(page) {
+  const steps = rand(3, 8)
+
+  for (let i = 0; i < steps; i++) {
+    const dir = Math.random() > 0.5 ? 1 : -1
+    await page.mouse.wheel(0, rand(200, 500) * dir)
+    await page.waitForTimeout(rand(400, 900))
+  }
+}
+
 async function smoothMoveTo(page, selector) {
   const el = await page.$(selector)
+  if (!el) return
+
   const box = await el.boundingBox()
+  if (!box) return
 
   const targetX = box.x + box.width / 2
   const targetY = box.y + box.height / 2
@@ -22,43 +40,60 @@ async function smoothMoveTo(page, selector) {
   await page.mouse.move(targetX, targetY, { steps: 35 })
 }
 
-// добавить в избранное максимально мягко
 async function addToFavorite(page) {
   const selector = '[data-qa^="vacancy-search-mark-favorite"]'
 
-  await page.waitForSelector(selector)
+  if (!(await page.locator(selector).count())) return
 
   await smoothMoveTo(page, selector)
-
-  await page.waitForTimeout(400 + Math.random() * 700)
-
+  await page.waitForTimeout(rand(400, 900))
   await page.click(selector)
 }
 
-// отклик
 async function respondVacancy(page) {
-  const selector = '[data-qa="vacancy-serp__vacancy_response"]'
+  const selectors = [
+    '[data-qa="vacancy-serp__vacancy_response"]',
+    '[data-qa="vacancy-response-link-top"]',
+    '[data-qa="vacancy-response-link-bottom"]',
+  ]
 
-  await page.waitForSelector(selector)
+  for (const selector of selectors) {
+    const el = page.locator(selector)
 
-  await smoothMoveTo(page, selector)
-
-  await page.waitForTimeout(600 + Math.random() * 900)
-
-  await page.click(selector)
+    if (await el.count()) {
+      await smoothMoveTo(page, selector)
+      await page.waitForTimeout(rand(600, 1200))
+      await el.first().click()
+      break
+    }
+  }
 }
 
-// переход на следующую страницу
-async function nextPage(page) {
+async function smartNextPage(page) {
   await killOverlays(page)
 
   const pages = page.locator('[data-qa="pager-page"]')
-  const lastPage = pages.last()
+  const count = await pages.count()
 
-  await lastPage.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
+  if (!count) return
 
-  await lastPage.click({ force: true })
+  const strategy = Math.random()
+  let target
+
+  if (strategy < 0.4) {
+    target = pages.nth(rand(0, count))
+  } else if (strategy < 0.8) {
+    const nextBtn = page.locator('[data-qa="pager-next"]')
+    if (await nextBtn.count()) target = nextBtn
+  }
+
+  if (!target) {
+    target = pages.last()
+  }
+
+  await target.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(rand(300, 800))
+  await target.click({ force: true })
 }
 
 async function closeCookies(page) {
@@ -79,7 +114,6 @@ async function killOverlays(page) {
     const blockers = document.querySelectorAll(`
       [data-qa="cookies-policy-informer"],
       #bottom-cookies-policy-informer,
-      .wrapper--UZEraJ9YBXy3riZk,
       [class*="float-chatik-activator"],
       [class*="floating-button"]
     `)
@@ -90,9 +124,10 @@ async function killOverlays(page) {
 
 module.exports = {
   humanScroll,
+  randomWheel,
   addToFavorite,
   respondVacancy,
-  nextPage,
+  smartNextPage,
   closeCookies,
   killOverlays,
 }
